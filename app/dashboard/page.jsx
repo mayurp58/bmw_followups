@@ -115,6 +115,21 @@ export default function Dashboard() {
                     </div>
                 </div>
 
+                {/* Status-wise Count Cards */}
+                <div className="mb-8">
+                    <h2 className="text-lg font-medium text-gray-900 mb-4">Leads by Status</h2>
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                        {statusCounts.map((item, index) => (
+                            <div key={item.status} className="bg-white overflow-hidden shadow rounded-lg">
+                                <div className="p-4">
+                                    <dt className="text-sm font-medium text-gray-500 truncate">{item.status}</dt>
+                                    <dd className="mt-1 text-2xl font-semibold text-gray-900">{item.count}</dd>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                     {/* Status Chart */}
                     <div className="bg-white shadow rounded-lg p-6">

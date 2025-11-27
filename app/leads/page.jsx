@@ -4,8 +4,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Navbar from '../components/Navbar';
 import StatusBadge from '../components/StatusBadge';
 import AddNoteModal from '../components/AddNoteModal';
-import { Search, Filter, Download, ChevronLeft, ChevronRight, Plus, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
+import { Search, Filter, Download, Plus, Calendar, Phone, MessageCircle, User, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import Tabs from '../components/Tabs';
 
@@ -19,6 +19,7 @@ function LeadsContent() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedLead, setSelectedLead] = useState(null);
     const [activeTab, setActiveTab] = useState('enquiry');
+    const [statusCounts, setStatusCounts] = useState([]);
 
     // Filters state
     const [filters, setFilters] = useState({
@@ -62,12 +63,29 @@ function LeadsContent() {
 
     useEffect(() => {
         fetchLeads();
-    }, [pagination.page, filters, activeTab]); // Re-fetch when page, filters, or tab changes
+        fetchStatusCounts();
+    }, [pagination.page, activeTab, filters]);
+
+    const fetchStatusCounts = async () => {
+        try {
+            const res = await fetch('/api/dashboard/stats');
+            const data = await res.json();
+            if (data.statusCounts) {
+                setStatusCounts(data.statusCounts);
+            }
+        } catch (err) {
+            console.error('Failed to fetch status counts', err);
+        }
+    };
 
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
         setFilters(prev => ({ ...prev, [name]: value }));
-        setPagination(prev => ({ ...prev, page: 1 })); // Reset to page 1
+    };
+
+    const applyFilters = () => {
+        setPagination(prev => ({ ...prev, page: 1 })); // Reset to page 1 when filters change
+        fetchLeads(); // Manually trigger fetch
     };
 
     const handlePageChange = (newPage) => {
@@ -118,6 +136,8 @@ function LeadsContent() {
     const tabs = [
         { id: 'enquiry', name: 'Project Enquiry Leads' },
         { id: 'customer', name: 'Customer Leads' },
+        { id: 'new', name: 'New Leads' },
+        { id: 'booking', name: 'Booking Done' },
     ];
 
     return (
@@ -160,34 +180,36 @@ function LeadsContent() {
                                     name="search"
                                     id="search"
                                     className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md border p-2"
-                                    placeholder="Name or Mobile"
+                                    placeholder="Search by name or mobile"
                                     value={filters.search}
                                     onChange={handleFilterChange}
                                 />
                             </div>
                         </div>
 
-                        <div className="sm:col-span-1">
-                            <label htmlFor="status" className="block text-sm font-medium text-gray-700">Status</label>
-                            <select
-                                id="status"
-                                name="status"
-                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
-                                value={filters.status}
-                                onChange={handleFilterChange}
-                            >
-                                <option value="">All Statuses</option>
-                                <option value="Follow up">Follow up</option>
-                                <option value="Call Not Picked">Call Not Picked</option>
-                                <option value="Interested">Interested</option>
-                                <option value="Not Interested">Not Interested</option>
-                                <option value="Site visit done">Site visit done</option>
-                                <option value="Booking done">Booking done</option>
-                                <option value="Already Booked">Already Booked</option>
-                                <option value="Dead Lead">Dead Lead</option>
-                                <option value="CP">CP</option>
-                            </select>
-                        </div>
+                        {/* Hide status filter for new and booking tabs */}
+                        {activeTab !== 'new' && activeTab !== 'booking' && (
+                            <div className="sm:col-span-1">
+                                <label htmlFor="status" className="block text-sm font-medium text-gray-700">Status</label>
+                                <select
+                                    id="status"
+                                    name="status"
+                                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
+                                    value={filters.status}
+                                    onChange={handleFilterChange}
+                                >
+                                    <option value="">All Statuses</option>
+                                    <option value="Follow up">Follow up</option>
+                                    <option value="Call Not Picked">Call Not Picked</option>
+                                    <option value="Interested">Interested</option>
+                                    <option value="Not Interested">Not Interested</option>
+                                    <option value="Site visit done">Site visit done</option>
+                                    <option value="Booking done">Booking done</option>
+                                    <option value="Already Booked">Already Booked</option>
+                                    <option value="Dead Lead">Dead Lead</option>
+                                </select>
+                            </div>
+                        )}
 
                         <div className="sm:col-span-1">
                             <label htmlFor="fromDate" className="block text-sm font-medium text-gray-700">From Date</label>
@@ -195,7 +217,7 @@ function LeadsContent() {
                                 type="date"
                                 name="fromDate"
                                 id="fromDate"
-                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
+                                className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md border p-2"
                                 value={filters.fromDate}
                                 onChange={handleFilterChange}
                             />
@@ -206,10 +228,19 @@ function LeadsContent() {
                                 type="date"
                                 name="toDate"
                                 id="toDate"
-                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
+                                className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md border p-2"
                                 value={filters.toDate}
                                 onChange={handleFilterChange}
                             />
+                        </div>
+                        <div className="sm:col-span-1 flex items-end">
+                            <button
+                                onClick={applyFilters}
+                                className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            >
+                                <Filter className="h-4 w-4 mr-2" />
+                                Apply
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -245,11 +276,15 @@ function LeadsContent() {
                                             leads.map((lead) => (
                                                 <tr key={lead.id || lead.enq_id || Math.random()}>
                                                     <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
-                                                        <div className="font-medium text-gray-900">{lead.cust_name || 'Unknown'}</div>
-                                                        <div className="text-gray-500">{lead.cust_mobile || '-'}</div>
+                                                        <Link href={`/leads/${lead.id || lead.enq_id}?type=${activeTab}`} className="font-medium text-blue-600 hover:text-blue-900 block">
+                                                            {lead.cust_name || 'Unknown'}
+                                                        </Link>
+                                                        <Link href={`/leads/${lead.id || lead.enq_id}?type=${activeTab}`} className="text-gray-500 hover:text-gray-900 block">
+                                                            {lead.cust_mobile || '-'}
+                                                        </Link>
                                                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-1 ${activeTab === 'customer'
-                                                                ? 'bg-purple-100 text-purple-800'
-                                                                : 'bg-blue-100 text-blue-800'
+                                                            ? 'bg-purple-100 text-purple-800'
+                                                            : 'bg-blue-100 text-blue-800'
                                                             }`}>
                                                             {activeTab === 'customer' ? 'Customer' : 'Enquiry'}
                                                         </span>

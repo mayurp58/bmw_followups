@@ -47,7 +47,136 @@ export async function GET(request) {
         let countQuery = '';
         let query = '';
 
-        if (type === 'customer') {
+        if (type === 'new') {
+            // New Leads - Only leads with NULL or empty status
+            let newWhere = 'WHERE pe.status IS NULL OR pe.status = \'\'';
+            let custNewWhere = 'WHERE status IS NULL OR status = \'\'';
+            const newParams = [];
+
+            if (search) {
+                newWhere += ' AND (COALESCE(NULLIF(pe.cust_name, \'\'), CONCAT(c.cust_fname, \' \', c.cust_lname)) LIKE ? OR COALESCE(NULLIF(pe.cust_mobile, \'\'), c.cust_mobile) LIKE ?)';
+                custNewWhere += ' AND (CONCAT(cust_fname, \' \', cust_lname) LIKE ? OR cust_mobile LIKE ?)';
+                newParams.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+            }
+
+            if (fromDate) {
+                newWhere += ' AND DATE(pe.date_added) >= ?';
+                custNewWhere += ' AND DATE(created_at) >= ?';
+                newParams.push(fromDate, fromDate);
+            }
+
+            if (toDate) {
+                newWhere += ' AND DATE(pe.date_added) <= ?';
+                custNewWhere += ' AND DATE(created_at) <= ?';
+                newParams.push(toDate, toDate);
+            }
+
+            countQuery = `
+                SELECT (
+                    (SELECT COUNT(*) FROM project_enquiry pe LEFT JOIN customers c ON pe.customer_id = c.cust_id ${newWhere}) +
+                    (SELECT COUNT(*) FROM customers ${custNewWhere})
+                ) as total
+            `;
+
+            query = `
+                (SELECT 
+                    pe.enq_id as id, 
+                    COALESCE(NULLIF(pe.cust_name, ''), CONCAT(c.cust_fname, ' ', c.cust_lname)) as cust_name, 
+                    COALESCE(NULLIF(pe.cust_mobile, ''), c.cust_mobile) as cust_mobile, 
+                    COALESCE(NULLIF(pe.status, ''), 'New') as status,
+                    pe.followup_date, pe.followup_time, pe.date_added,
+                    pd.poj_name as project_name,
+                    (SELECT note FROM project_enquiry_notes WHERE enq_id = pe.enq_id ORDER BY added_at DESC LIMIT 1) as last_note,
+                    'enquiry' as type
+                FROM project_enquiry pe
+                LEFT JOIN project_details pd ON pe.project_id = pd.proj_id
+                LEFT JOIN customers c ON pe.customer_id = c.cust_id
+                ${newWhere})
+                UNION ALL
+                (SELECT 
+                    cust_id as id, 
+                    CONCAT(cust_fname, ' ', cust_lname) as cust_name, 
+                    cust_mobile, 
+                    COALESCE(NULLIF(status, ''), 'New') as status,
+                    followup_date, 
+                    followup_time, 
+                    created_at as date_added,
+                    NULL as project_name,
+                    (SELECT note FROM customer_notes WHERE cust_id = customers.cust_id ORDER BY added_at DESC LIMIT 1) as last_note,
+                    'customer' as type
+                FROM customers
+                ${custNewWhere})
+                ORDER BY date_added DESC
+                LIMIT ? OFFSET ?
+            `;
+            queryParams.length = 0;
+            queryParams.push(...newParams);
+
+        } else if (type === 'booking') {
+            // Booking Done - Combined enquiries and customers with 'Booking done' status
+            let bookingWhere = 'WHERE pe.status = \'Booking done\'';
+            let custBookingWhere = 'WHERE status = \'Booking done\'';
+            const bookingParams = [];
+
+            if (search) {
+                bookingWhere += ' AND (COALESCE(NULLIF(pe.cust_name, \'\'), CONCAT(c.cust_fname, \' \', c.cust_lname)) LIKE ? OR COALESCE(NULLIF(pe.cust_mobile, \'\'), c.cust_mobile) LIKE ?)';
+                custBookingWhere += ' AND (CONCAT(cust_fname, \' \', cust_lname) LIKE ? OR cust_mobile LIKE ?)';
+                bookingParams.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+            }
+
+            if (fromDate) {
+                bookingWhere += ' AND DATE(pe.date_added) >= ?';
+                custBookingWhere += ' AND DATE(created_at) >= ?';
+                bookingParams.push(fromDate, fromDate);
+            }
+
+            if (toDate) {
+                bookingWhere += ' AND DATE(pe.date_added) <= ?';
+                custBookingWhere += ' AND DATE(created_at) <= ?';
+                bookingParams.push(toDate, toDate);
+            }
+
+            countQuery = `
+                SELECT (
+                    (SELECT COUNT(*) FROM project_enquiry pe LEFT JOIN customers c ON pe.customer_id = c.cust_id ${bookingWhere}) +
+                    (SELECT COUNT(*) FROM customers ${custBookingWhere})
+                ) as total
+            `;
+
+            query = `
+                (SELECT 
+                    pe.enq_id as id, 
+                    COALESCE(NULLIF(pe.cust_name, ''), CONCAT(c.cust_fname, ' ', c.cust_lname)) as cust_name, 
+                    COALESCE(NULLIF(pe.cust_mobile, ''), c.cust_mobile) as cust_mobile, 
+                    pe.status, pe.followup_date, pe.followup_time, pe.date_added,
+                    pd.poj_name as project_name,
+                    (SELECT note FROM project_enquiry_notes WHERE enq_id = pe.enq_id ORDER BY added_at DESC LIMIT 1) as last_note,
+                    'enquiry' as type
+                FROM project_enquiry pe
+                LEFT JOIN project_details pd ON pe.project_id = pd.proj_id
+                LEFT JOIN customers c ON pe.customer_id = c.cust_id
+                ${bookingWhere})
+                UNION ALL
+                (SELECT 
+                    cust_id as id, 
+                    CONCAT(cust_fname, ' ', cust_lname) as cust_name, 
+                    cust_mobile, 
+                    status, 
+                    followup_date, 
+                    followup_time, 
+                    created_at as date_added,
+                    NULL as project_name,
+                    (SELECT note FROM customer_notes WHERE cust_id = customers.cust_id ORDER BY added_at DESC LIMIT 1) as last_note,
+                    'customer' as type
+                FROM customers
+                ${custBookingWhere})
+                ORDER BY date_added DESC
+                LIMIT ? OFFSET ?
+            `;
+            queryParams.length = 0;
+            queryParams.push(...bookingParams);
+
+        } else if (type === 'customer') {
             // Customer Query
             let custWhere = 'WHERE 1=1';
             const custParams = [];
@@ -56,7 +185,21 @@ export async function GET(request) {
                 custWhere += ' AND (CONCAT(cust_fname, " ", cust_lname) LIKE ? OR cust_mobile LIKE ?)';
                 custParams.push(`%${search}%`, `%${search}%`);
             }
-            // Add other filters if applicable to customers
+
+            if (status) {
+                custWhere += ' AND status = ?';
+                custParams.push(status);
+            }
+
+            if (fromDate) {
+                custWhere += ' AND DATE(created_at) >= ?';
+                custParams.push(fromDate);
+            }
+
+            if (toDate) {
+                custWhere += ' AND DATE(created_at) <= ?';
+                custParams.push(toDate);
+            }
 
             countQuery = `SELECT COUNT(*) as total FROM customers ${custWhere}`;
 
@@ -77,6 +220,7 @@ export async function GET(request) {
                 ORDER BY created_at DESC
                 LIMIT ? OFFSET ?
             `;
+
 
             // Re-assign queryParams for execution
             queryParams.length = 0;

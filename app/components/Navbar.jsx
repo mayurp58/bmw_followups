@@ -2,7 +2,7 @@
 import { useState, useEffect, Fragment } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, Phone, Bell, BarChart3, User, Menu, X } from 'lucide-react';
+import { Home, Users, Phone, Bell, BarChart3, User, Menu, X, Building2 } from 'lucide-react';
 import { Disclosure, Popover, Transition } from '@headlessui/react';
 
 export default function Navbar() {
@@ -30,6 +30,7 @@ export default function Navbar() {
     const navItems = [
         { name: 'Dashboard', href: '/dashboard', icon: Home },
         { name: 'Leads', href: '/leads', icon: Users },
+        { name: 'Projects', href: '/projects', icon: Building2 },
         { name: 'Followups', href: '/followups/today', icon: Phone },
         { name: 'Reminders', href: '/reminders', icon: Bell },
         { name: 'Reports', href: '/reports', icon: BarChart3 },

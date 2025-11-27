@@ -4,21 +4,24 @@ import { useEffect } from 'react';
 
 export default function GlobalPickerBehavior() {
     useEffect(() => {
-        const handleInputClick = (e) => {
-            if (e.target.tagName === 'INPUT' && (e.target.type === 'date' || e.target.type === 'time')) {
+        const handlePickerOpen = (e) => {
+            const target = e.target;
+            if (target.tagName === 'INPUT' && (target.type === 'date' || target.type === 'time')) {
                 try {
-                    e.target.showPicker();
+                    // Must call showPicker() synchronously within user gesture
+                    target.showPicker();
                 } catch (error) {
-                    // showPicker might not be supported in all browsers or contexts
-                    console.log('showPicker not supported or failed', error);
+                    // showPicker might not be supported in all browsers
+                    console.log('showPicker not available', error);
                 }
             }
         };
 
-        document.addEventListener('click', handleInputClick);
+        // Listen to click events in capture phase to work with modals
+        document.addEventListener('click', handlePickerOpen, true);
 
         return () => {
-            document.removeEventListener('click', handleInputClick);
+            document.removeEventListener('click', handlePickerOpen, true);
         };
     }, []);
 

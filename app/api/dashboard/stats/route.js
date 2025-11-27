@@ -54,7 +54,7 @@ export async function GET() {
     const todayFollowups = todayFollowupsList.length;
 
     // 3. Overdue Followups
-    const [overdueEnquiry] = await pool.query('SELECT COUNT(*) as count FROM project_enquiry WHERE followup_date < ? AND status NOT IN ("Dead Lead", "Booking done", "Not Interested")', [today]);
+    const [overdueEnquiry] = await pool.query('SELECT COUNT(*) as count FROM project_enquiry WHERE followup_date < ? AND status NOT IN ("Dead Lead", "Booking done", "Not Interested", "Duplicate Lead")', [today]);
     const [overdueCustomer] = await pool.query('SELECT COUNT(*) as count FROM customers WHERE followup_date < ? AND status NOT IN ("Dead Lead", "Booking done", "Not Interested")', [today]);
     const overdueFollowups = overdueEnquiry[0].count + overdueCustomer[0].count;
 

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Navbar from '../../components/Navbar';
 import StatusBadge from '../../components/StatusBadge';
-import { User, Phone, Mail, Building, Clock, Calendar, PlusCircle, MessageCircle } from 'lucide-react';
+import { User, Phone, Building, Clock, Calendar, PlusCircle, MessageCircle } from 'lucide-react';
 
 export default function LeadDetailPage() {
     const params = useParams();
@@ -43,32 +43,49 @@ export default function LeadDetailPage() {
         if (id) fetchData();
     }, [id]);
 
+    // Clear followup date/time when terminal status is selected
+    useEffect(() => {
+        const terminalStatuses = ['Dead Lead', 'Already Booked', 'Booking done', 'Not Interested', 'Duplicate Lead'];
+        if (terminalStatuses.includes(noteForm.status)) {
+            setNoteForm(prev => ({ ...prev, followupDate: '', followupTime: '' }));
+        }
+    }, [noteForm.status]);
+
     const handleNoteSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
         try {
+            const payload = {
+                note: noteForm.note,
+                addedby: 'Admin',
+                status: noteForm.status,
+                followupdate: noteForm.followupDate,
+                followuptime: noteForm.followupTime
+            };
+
+            // Add EITHER enqid OR custid based on type
+            if (type === 'customer') {
+                payload.custid = id;
+            } else {
+                payload.enqid = id;
+            }
+
             const res = await fetch('/api/notes', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    enqid: data.lead.enq_id,
-                    custid: data.customer.cust_id,
-                    note: noteForm.note,
-                    addedby: 'Admin',
-                    status: noteForm.status,
-                    followupdate: noteForm.followupDate,
-                    followuptime: noteForm.followupTime
-                })
+                body: JSON.stringify(payload)
             });
 
             if (res.ok) {
                 setNoteForm({ note: '', status: noteForm.status, followupDate: '', followupTime: '' });
                 fetchData(); // Refresh data
             } else {
-                alert('Failed to add note');
+                const errorData = await res.json();
+                alert(`Failed to add note: ${errorData.error || 'Unknown error'}`);
             }
         } catch (error) {
             console.error('Error adding note:', error);
+            alert('Error adding note');
         } finally {
             setSubmitting(false);
         }
@@ -131,16 +148,27 @@ export default function LeadDetailPage() {
                                         <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{customer.cust_mobile}</dd>
                                     </div>
                                     <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                        <dt className="text-sm font-medium text-gray-500 flex items-center"><Mail className="h-4 w-4 mr-2" /> Email</dt>
-                                        <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{customer.cust_email || '-'}</dd>
-                                    </div>
-                                    <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                                         <dt className="text-sm font-medium text-gray-500">Credits</dt>
                                         <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{customer.credits}</dd>
                                     </div>
                                 </dl>
                             </div>
                         </div>
+
+                        {/* Enquiry Message - Show only for enquiry type */}
+                        {type === 'enquiry' && lead.message && (
+                            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                                <div className="px-4 py-5 sm:px-6">
+                                    <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
+                                        <MessageCircle className="h-5 w-5 mr-2 text-blue-500" />
+                                        Enquiry Message
+                                    </h3>
+                                </div>
+                                <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+                                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{lead.message}</p>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Interested Projects */}
                         <div className="bg-white shadow overflow-hidden sm:rounded-lg">
@@ -207,27 +235,33 @@ export default function LeadDetailPage() {
                                                 <option value="Booking done">Booking done</option>
                                                 <option value="Already Booked">Already Booked</option>
                                                 <option value="Dead Lead">Dead Lead</option>
+                                                <option value="Duplicate Lead">Duplicate Lead</option>
                                                 <option value="CP">CP</option>
                                             </select>
                                         </div>
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-700">Followup Date</label>
-                                            <input
-                                                type="date"
-                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border p-2"
-                                                value={noteForm.followupDate}
-                                                onChange={(e) => setNoteForm({ ...noteForm, followupDate: e.target.value })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-700">Followup Time</label>
-                                            <input
-                                                type="time"
-                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border p-2"
-                                                value={noteForm.followupTime}
-                                                onChange={(e) => setNoteForm({ ...noteForm, followupTime: e.target.value })}
-                                            />
-                                        </div>
+                                        {/* Only show followup date/time for non-terminal statuses */}
+                                        {!['Dead Lead', 'Already Booked', 'Booking done', 'Not Interested', 'Duplicate Lead'].includes(noteForm.status) && (
+                                            <>
+                                                <div>
+                                                    <label className="block text-xs font-medium text-gray-700">Followup Date</label>
+                                                    <input
+                                                        type="date"
+                                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border p-2"
+                                                        value={noteForm.followupDate}
+                                                        onChange={(e) => setNoteForm({ ...noteForm, followupDate: e.target.value })}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium text-gray-700">Followup Time</label>
+                                                    <input
+                                                        type="time"
+                                                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border p-2"
+                                                        value={noteForm.followupTime}
+                                                        onChange={(e) => setNoteForm({ ...noteForm, followupTime: e.target.value })}
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                     <div className="flex justify-end">
                                         <button

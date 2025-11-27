@@ -20,7 +20,14 @@ export async function POST(request) {
           INSERT INTO project_enquiry_notes (enq_id, note, added_by, status, followup_date, followup_time, added_at)
           VALUES (?, ?, ?, ?, ?, ?, NOW())
         `;
-                await connection.query(insertNoteQuery, [enqid, note, addedby, status, followupdate, followuptime]);
+                await connection.query(insertNoteQuery, [
+                    enqid,
+                    note,
+                    addedby,
+                    status,
+                    followupdate || null,  // Convert empty string to null
+                    followuptime || null   // Convert empty string to null
+                ]);
 
                 // Update project_enquiry
                 if (followupdate) {
@@ -29,15 +36,16 @@ export async function POST(request) {
             SET followup_date = ?, followup_time = ?, status = ?
             WHERE enq_id = ?
             `;
-                    await connection.query(updateEnquiryQuery, [followupdate, followuptime, status, enqid]);
+                    await connection.query(updateEnquiryQuery, [followupdate, followuptime || null, status, enqid]);
                 } else if (status) {
                     const updateEnquiryQuery = `
             UPDATE project_enquiry 
-            SET status = ?
+            SET status = ?, followup_date = NULL, followup_time = NULL
             WHERE enq_id = ?
             `;
                     await connection.query(updateEnquiryQuery, [status, enqid]);
                 }
+
 
             } else if (custid) {
                 // Insert into customer_notes
@@ -45,7 +53,14 @@ export async function POST(request) {
           INSERT INTO customer_notes (cust_id, note, added_by, status, followup_date, followup_time, added_at)
           VALUES (?, ?, ?, ?, ?, ?, NOW())
         `;
-                await connection.query(insertNoteQuery, [custid, note, addedby, status, followupdate, followuptime]);
+                await connection.query(insertNoteQuery, [
+                    custid,
+                    note,
+                    addedby,
+                    status,
+                    followupdate || null,  // Convert empty string to null
+                    followuptime || null   // Convert empty string to null
+                ]);
 
                 // Update customers
                 if (followupdate) {
@@ -54,11 +69,11 @@ export async function POST(request) {
             SET followup_date = ?, followup_time = ?, status = ?
             WHERE cust_id = ?
             `;
-                    await connection.query(updateCustomerQuery, [followupdate, followuptime, status, custid]);
+                    await connection.query(updateCustomerQuery, [followupdate, followuptime || null, status, custid]);
                 } else if (status) {
                     const updateCustomerQuery = `
             UPDATE customers 
-            SET status = ?
+            SET status = ?, followup_date = NULL, followup_time = NULL
             WHERE cust_id = ?
             `;
                     await connection.query(updateCustomerQuery, [status, custid]);

@@ -20,32 +20,53 @@ export default function AddNoteModal({ isOpen, onClose, lead, onNoteAdded }) {
         }
     }, [lead]);
 
+    // Clear followup date/time when terminal status is selected
+    useEffect(() => {
+        const terminalStatuses = ['Dead Lead', 'Already Booked', 'Booking done', 'Not Interested', 'Duplicate Lead'];
+        if (terminalStatuses.includes(status)) {
+            setFollowupDate('');
+            setFollowupTime('');
+        }
+    }, [status]);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
 
         try {
+            const payload = {
+                note,
+                addedby: 'Admin',
+                status,
+                followupdate: followupDate,
+                followuptime: followupTime,
+            };
+
+            // Determine if this is an enquiry or customer lead
+            // Check lead.type first (from list page), then fallback to checking fields
+            if (lead.type === 'enquiry' || lead.enq_id) {
+                payload.enqid = lead.enq_id || lead.id;
+            } else if (lead.type === 'customer' || lead.cust_id) {
+                payload.custid = lead.cust_id || lead.id;
+            } else {
+                // Fallback: use id as enqid if no type specified
+                payload.enqid = lead.id;
+            }
+
             const response = await fetch('/api/notes', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    enqid: lead.enq_id,
-                    custid: lead.cust_id,
-                    note,
-                    addedby: 'Admin', // Hardcoded for now
-                    status,
-                    followupdate: followupDate,
-                    followuptime: followupTime,
-                }),
+                body: JSON.stringify(payload),
             });
 
             if (response.ok) {
                 onNoteAdded();
                 onClose();
             } else {
-                alert('Failed to add note');
+                const errorData = await response.json();
+                alert(`Failed to add note: ${errorData.error || 'Unknown error'}`);
             }
         } catch (error) {
             console.error('Error adding note:', error);
@@ -136,37 +157,41 @@ export default function AddNoteModal({ isOpen, onClose, lead, onNoteAdded }) {
                                                         <option value="Already Booked">Already Booked</option>
                                                         <option value="Dead Lead">Dead Lead</option>
                                                         <option value="CP">CP</option>
+                                                        <option value="Duplicate Lead">Duplicate Lead</option>
                                                     </select>
                                                 </div>
 
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label htmlFor="followupDate" className="block text-sm font-medium text-gray-700">
-                                                            Followup Date
-                                                        </label>
-                                                        <input
-                                                            type="date"
-                                                            id="followupDate"
-                                                            name="followupDate"
-                                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
-                                                            value={followupDate}
-                                                            onChange={(e) => setFollowupDate(e.target.value)}
-                                                        />
+                                                {/* Only show followup date/time for non-terminal statuses */}
+                                                {!['Dead Lead', 'Already Booked', 'Booking done', 'Not Interested', 'Duplicate Lead'].includes(status) && (
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div>
+                                                            <label htmlFor="followupDate" className="block text-sm font-medium text-gray-700">
+                                                                Followup Date
+                                                            </label>
+                                                            <input
+                                                                type="date"
+                                                                id="followupDate"
+                                                                name="followupDate"
+                                                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                                                                value={followupDate}
+                                                                onChange={(e) => setFollowupDate(e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label htmlFor="followupTime" className="block text-sm font-medium text-gray-700">
+                                                                Followup Time
+                                                            </label>
+                                                            <input
+                                                                type="time"
+                                                                id="followupTime"
+                                                                name="followupTime"
+                                                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                                                                value={followupTime}
+                                                                onChange={(e) => setFollowupTime(e.target.value)}
+                                                            />
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <label htmlFor="followupTime" className="block text-sm font-medium text-gray-700">
-                                                            Followup Time
-                                                        </label>
-                                                        <input
-                                                            type="time"
-                                                            id="followupTime"
-                                                            name="followupTime"
-                                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
-                                                            value={followupTime}
-                                                            onChange={(e) => setFollowupTime(e.target.value)}
-                                                        />
-                                                    </div>
-                                                </div>
+                                                )}
 
                                                 <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
                                                     <button
