@@ -21,6 +21,43 @@
 
 body {
   background: var(--background);
-  color: var(--foreground);
+  color: #0a0a0a;
   font-family: Arial, Helvetica, sans-serif;
+}
+
+:root {
+  --primary-color: #2563eb;
+  /* blue-600 */
+  --primary-hover: #1d4ed8;
+  /* blue-700 */
+}
+
+/* Ensure calendar and time picker indicators are visible and clickable */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.4);
+  /* Make it dark gray */
+}
+
+/* Add a bit of padding to inputs to make room for the icon if needed */
+input[type="date"],
+input[type="time"] {
+  position: relative;
+}
+
+/* Default styling for all inputs */
+input,
+select,
+textarea {
+  border-color: #d1d5db;
+  /* gray-300 default */
+  outline: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 1px var(--primary-color);
 }

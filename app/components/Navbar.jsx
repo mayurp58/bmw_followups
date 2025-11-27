@@ -12,7 +12,18 @@ export default function Navbar() {
     useEffect(() => {
         fetch('/api/followups/today')
             .then(res => res.json())
-            .then(data => setNotifications(data))
+            .then(data => {
+                // Handle new API response structure { enquiries: [], customers: [] }
+                const allNotifications = [
+                    ...(data.enquiries || []),
+                    ...(data.customers || [])
+                ].sort((a, b) => {
+                    if (!a.followup_time) return 1;
+                    if (!b.followup_time) return -1;
+                    return a.followup_time.localeCompare(b.followup_time);
+                });
+                setNotifications(allNotifications);
+            })
             .catch(err => console.error('Failed to fetch notifications', err));
     }, []);
 
@@ -33,7 +44,7 @@ export default function Navbar() {
                             <div className="flex">
                                 <div className="flex-shrink-0 flex items-center">
                                     <Link href="/dashboard" className="text-2xl font-bold text-blue-600">
-                                        BookMyWing
+                                        <img width="120" height="30" src="https://d19yyi13ug8knw.cloudfront.net/assets/logo.png" alt="Bookmywing Logo" />
                                     </Link>
                                 </div>
                                 <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
@@ -117,13 +128,22 @@ export default function Navbar() {
                                     )}
                                 </Popover>
 
-                                <div className="ml-3 relative">
-                                    <div className="flex items-center space-x-2 cursor-pointer">
+                                <div className="ml-3 relative flex items-center space-x-4">
+                                    <div className="flex items-center space-x-2">
                                         <div className="bg-blue-100 rounded-full p-2">
                                             <User className="h-5 w-5 text-blue-600" />
                                         </div>
                                         <span className="text-sm font-medium text-gray-700">Admin</span>
                                     </div>
+                                    <button
+                                        onClick={async () => {
+                                            await fetch('/api/auth/logout', { method: 'POST' });
+                                            window.location.href = '/login';
+                                        }}
+                                        className="text-sm text-gray-500 hover:text-gray-700 font-medium"
+                                    >
+                                        Logout
+                                    </button>
                                 </div>
                             </div>
                             <div className="-mr-2 flex items-center sm:hidden">
@@ -204,6 +224,17 @@ export default function Navbar() {
                                     ))}
                                 </div>
                             )}
+                            <div className="mt-3 px-2">
+                                <button
+                                    onClick={async () => {
+                                        await fetch('/api/auth/logout', { method: 'POST' });
+                                        window.location.href = '/login';
+                                    }}
+                                    className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:text-red-800 hover:bg-red-50"
+                                >
+                                    Logout
+                                </button>
+                            </div>
                         </div>
                     </Disclosure.Panel>
                 </>

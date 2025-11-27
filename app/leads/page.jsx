@@ -7,6 +7,8 @@ import AddNoteModal from '../components/AddNoteModal';
 import { Search, Filter, Download, ChevronLeft, ChevronRight, Plus, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 
+import Tabs from '../components/Tabs';
+
 function LeadsContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -16,6 +18,7 @@ function LeadsContent() {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedLead, setSelectedLead] = useState(null);
+    const [activeTab, setActiveTab] = useState('enquiry');
 
     // Filters state
     const [filters, setFilters] = useState({
@@ -31,6 +34,7 @@ function LeadsContent() {
         const params = new URLSearchParams({
             page: pagination.page,
             limit: 10,
+            type: activeTab,
             ...filters
         });
 
@@ -42,8 +46,13 @@ function LeadsContent() {
         try {
             const res = await fetch(`/api/leads?${params}`);
             const data = await res.json();
-            setLeads(data.leads);
-            setPagination(data.pagination);
+            if (data.pagination) {
+                setLeads(data.leads || []);
+                setPagination(data.pagination);
+            } else {
+                console.error('Invalid API response:', data);
+                setLeads([]);
+            }
         } catch (error) {
             console.error('Error fetching leads:', error);
         } finally {
@@ -53,7 +62,7 @@ function LeadsContent() {
 
     useEffect(() => {
         fetchLeads();
-    }, [pagination.page, filters]); // Re-fetch when page or filters change
+    }, [pagination.page, filters, activeTab]); // Re-fetch when page, filters, or tab changes
 
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
@@ -82,7 +91,7 @@ function LeadsContent() {
         const csvContent = [
             headers.join(','),
             ...leads.map(lead => [
-                lead.enq_id,
+                lead.id,
                 `"${lead.cust_name}"`,
                 lead.cust_mobile,
                 `"${lead.project_name || ''}"`,
@@ -106,6 +115,11 @@ function LeadsContent() {
         }
     };
 
+    const tabs = [
+        { id: 'enquiry', name: 'Project Enquiry Leads' },
+        { id: 'customer', name: 'Customer Leads' },
+    ];
+
     return (
         <div className="min-h-screen bg-gray-50">
             <Navbar />
@@ -126,6 +140,10 @@ function LeadsContent() {
                             Export CSV
                         </button>
                     </div>
+                </div>
+
+                <div className="mt-6">
+                    <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
                 </div>
 
                 {/* Filters */}
@@ -225,10 +243,16 @@ function LeadsContent() {
                                             </tr>
                                         ) : (
                                             leads.map((lead) => (
-                                                <tr key={lead.enq_id}>
+                                                <tr key={lead.id || lead.enq_id || Math.random()}>
                                                     <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
-                                                        <div className="font-medium text-gray-900">{lead.cust_name}</div>
-                                                        <div className="text-gray-500">{lead.cust_mobile}</div>
+                                                        <div className="font-medium text-gray-900">{lead.cust_name || 'Unknown'}</div>
+                                                        <div className="text-gray-500">{lead.cust_mobile || '-'}</div>
+                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-1 ${activeTab === 'customer'
+                                                                ? 'bg-purple-100 text-purple-800'
+                                                                : 'bg-blue-100 text-blue-800'
+                                                            }`}>
+                                                            {activeTab === 'customer' ? 'Customer' : 'Enquiry'}
+                                                        </span>
                                                     </td>
                                                     <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                                         {lead.project_name || '-'}
@@ -265,7 +289,7 @@ function LeadsContent() {
                                                             >
                                                                 <Plus className="h-5 w-5" />
                                                             </button>
-                                                            <Link href={`/leads/${lead.enq_id}`} className="text-gray-600 hover:text-gray-900" title="View Details">
+                                                            <Link href={`/leads/${lead.id || lead.enq_id}?type=${activeTab}`} className="text-gray-600 hover:text-gray-900" title="View Details">
                                                                 <ChevronRight className="h-5 w-5" />
                                                             </Link>
                                                         </div>

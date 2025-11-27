@@ -20,7 +20,20 @@ async function importDb() {
 
         console.log('Importing database...');
         await connection.query(sql);
-        console.log('Database imported successfully.');
+        console.log('Main database imported successfully.');
+
+        // Import project_enquiry.sql
+        const projectEnquiryPath = path.join(__dirname, '../project_enquiry.sql');
+        if (fs.existsSync(projectEnquiryPath)) {
+            console.log('Importing project_enquiry.sql...');
+            const projectEnquirySql = fs.readFileSync(projectEnquiryPath, 'utf8');
+
+            // Drop the table if it exists to avoid conflicts
+            await connection.query('DROP TABLE IF EXISTS project_enquiry');
+
+            await connection.query(projectEnquirySql);
+            console.log('project_enquiry.sql imported successfully.');
+        }
 
         await connection.end();
     } catch (err) {

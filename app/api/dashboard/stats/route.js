@@ -11,15 +11,22 @@ export async function GET() {
     const totalLeads = totalLeadsResult[0].count;
 
     // 2. Today's Followups List (Replaces simple count and Recent Activities)
+    // 2. Today's Followups List (Replaces simple count and Recent Activities)
     const enquiryQuery = `
       SELECT 
-        pe.enq_id, pe.cust_name, pe.cust_mobile, pe.status, pe.followup_date, pe.followup_time,
+        pe.enq_id, 
+        COALESCE(NULLIF(pe.cust_name, ''), CONCAT(c.cust_fname, ' ', c.cust_lname)) as cust_name, 
+        COALESCE(NULLIF(pe.cust_mobile, ''), c.cust_mobile) as cust_mobile, 
+        pe.status, pe.followup_date, pe.followup_time,
         pd.poj_name as project_name,
         'enquiry' as type,
         (SELECT note FROM project_enquiry_notes WHERE enq_id = pe.enq_id ORDER BY added_at DESC LIMIT 1) as last_note
       FROM project_enquiry pe
       LEFT JOIN project_details pd ON pe.project_id = pd.proj_id
+      LEFT JOIN customers c ON pe.customer_id = c.cust_id
       WHERE pe.followup_date = ?
+      AND COALESCE(NULLIF(pe.cust_mobile, ''), c.cust_mobile) IS NOT NULL 
+      AND COALESCE(NULLIF(pe.cust_mobile, ''), c.cust_mobile) <> ''
     `;
 
     const customerQuery = `
@@ -30,6 +37,7 @@ export async function GET() {
         (SELECT note FROM customer_notes WHERE cust_id = customers.cust_id ORDER BY added_at DESC LIMIT 1) as last_note
       FROM customers
       WHERE followup_date = ?
+      AND cust_mobile IS NOT NULL AND cust_mobile <> ''
     `;
 
     const [enquiries, customers] = await Promise.all([

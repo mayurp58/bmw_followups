@@ -38,9 +38,14 @@ export async function GET(request, { params }) {
     } else {
       // Fetch Enquiry Details (Existing Logic)
       const enquiryQuery = `
-        SELECT pe.*, pd.poj_name as project_name
+        SELECT 
+            pe.*, 
+            pd.poj_name as project_name,
+            COALESCE(NULLIF(pe.cust_name, ''), CONCAT(c.cust_fname, ' ', c.cust_lname)) as cust_name,
+            COALESCE(NULLIF(pe.cust_mobile, ''), c.cust_mobile) as cust_mobile
         FROM project_enquiry pe
         LEFT JOIN project_details pd ON pe.project_id = pd.proj_id
+        LEFT JOIN customers c ON pe.customer_id = c.cust_id
         WHERE pe.enq_id = ?
       `;
       const [enquiryRows] = await pool.query(enquiryQuery, [id]);
