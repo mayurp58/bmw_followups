@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/db';
+import pool from '../../../lib/db';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
     try {
@@ -24,7 +26,7 @@ export async function GET(request) {
         const statusQuery = `
       SELECT status, COUNT(*) as count 
       FROM project_enquiry 
-      WHERE 1=1 ${dateFilter}
+      WHERE 1 = 1 ${dateFilter}
       GROUP BY status
     `;
         const [statusData] = await pool.query(statusQuery, params);
@@ -34,7 +36,7 @@ export async function GET(request) {
       SELECT pd.poj_name, COUNT(*) as count
       FROM project_enquiry pe
       JOIN project_details pd ON pe.project_id = pd.proj_id
-      WHERE 1=1 ${dateFilter}
+      WHERE 1 = 1 ${dateFilter}
       GROUP BY pd.poj_name
       ORDER BY count DESC
       LIMIT 10
