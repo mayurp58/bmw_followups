@@ -276,10 +276,10 @@ function LeadsContent() {
                                             leads.map((lead) => (
                                                 <tr key={lead.id || lead.enq_id || Math.random()}>
                                                     <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
-                                                        <Link href={`/leads/${lead.id || lead.enq_id}?type=${activeTab}`} className="font-medium text-blue-600 hover:text-blue-900 block">
+                                                        <Link href={`/leads/${lead.id || lead.enq_id}?type=${lead.type || activeTab}`} className="font-medium text-blue-600 hover:text-blue-900 block">
                                                             {lead.cust_name || 'Unknown'}
                                                         </Link>
-                                                        <Link href={`/leads/${lead.id || lead.enq_id}?type=${activeTab}`} className="text-gray-500 hover:text-gray-900 block">
+                                                        <Link href={`/leads/${lead.id || lead.enq_id}?type=${lead.type || activeTab}`} className="text-gray-500 hover:text-gray-900 block">
                                                             {lead.cust_mobile || '-'}
                                                         </Link>
                                                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-1 ${activeTab === 'customer'
